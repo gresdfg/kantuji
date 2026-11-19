@@ -183,7 +183,7 @@ function render(){
   const list=kw?items.filter(i=>(i.name+' '+i.note).toLowerCase().includes(kw)):items;
   $('#count').textContent=items.length?`${items.length} 样`:'';
   if(!list.length){
-    $('#grid').innerHTML=`<div class="empty">${items.length?'没搜到':'还没有东西<br>点右下角的 ＋ 拍第一样'}</div>`;
+    $('#grid').innerHTML=`<div class="empty">${items.length?'没找到这一样':'还空着呢～<br>点右下角的 ＋，拍第一样'}</div>`;
     return;
   }
   $('#grid').innerHTML=list.map(i=>`
