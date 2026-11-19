@@ -66,6 +66,20 @@
   #q::placeholder{color:rgba(246,234,214,.52)}
   #q:focus-visible,#menu:focus-visible{outline:2px solid rgba(227,184,120,.55);outline-offset:2px}
 
+  .groups{display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:2px;scrollbar-width:none}
+  .groups::-webkit-scrollbar{display:none}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .chip{
+    flex:0 0 auto;height:34px;padding:0 15px;border-radius:17px;font-family:inherit;
+    border:1px solid var(--line);background:rgba(30,24,46,.55);
+    color:rgba(246,234,214,.72);font-size:13.5px;white-space:nowrap;
+    display:inline-flex;align-items:center;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  }
+  .chip.on{background:linear-gradient(165deg,#efcb92,#c49450);color:#231a2e;border-color:transparent;font-weight:600}
+  .chip.add{width:34px;padding:0;justify-content:center;color:var(--gold);font-size:17px}
+  .chip.small{height:31px;font-size:13px;padding:0 13px}
+
   main{
     display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;
     padding:6px 16px 120px;
@@ -118,7 +132,7 @@
     transform:translateY(16px);transition:transform .28s cubic-bezier(.22,1,.36,1);
   }
   .sheet.open .sheet-body{transform:translateY(0)}
-  .sheet-body img{width:100%;max-height:38vh;object-fit:contain;border-radius:14px;background:rgba(255,255,255,.05);display:block;margin-bottom:14px}
+  .sheet-body img{width:100%;max-height:30vh;object-fit:contain;border-radius:14px;background:rgba(255,255,255,.05);display:block;margin-bottom:14px}
   input.f,textarea.f{
     width:100%;border-radius:13px;padding:13px 14px;font-size:17px;outline:none;
     margin-bottom:10px;font-family:inherit;
@@ -186,6 +200,7 @@
     <button id="menu">备份</button>
   </div>
   <input id="q" placeholder="搜名字 / 备注" autocomplete="off">
+  <div class="groups" id="groups"></div>
 </header>
 
 <main id="grid"></main>
@@ -199,6 +214,8 @@
     <input class="f" id="f-name" placeholder="今天想记住什么～喵">
     <input class="f" id="f-price" placeholder="哦～原来是这样（可不填）" inputmode="decimal">
     <textarea class="f" id="f-note" placeholder="多想想容易漏掉的细节！"></textarea>
+    <div class="d-label">分区</div>
+    <div class="chips" id="groupPick"></div>
     <div class="row">
       <button id="cancel">取消</button>
       <button id="save" class="primary">存下</button>
@@ -244,6 +261,12 @@
 <script>
 const DB='tuji', STORE='items';
 let items=[], editing=null, pendingImg=null, current=null;
+let groups=[], activeFilter='*', formGroup='';
+
+function loadGroups(){
+  try{const g=JSON.parse(localStorage.getItem('groups')||'[]');return Array.isArray(g)?g:[]}catch(_){return []}
+}
+function saveGroups(){try{localStorage.setItem('groups',JSON.stringify(groups))}catch(_){}}
 
 function db(){return new Promise((ok,no)=>{const r=indexedDB.open(DB,1);
   r.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:'id'})};
@@ -274,12 +297,102 @@ const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"
 const fmt=ts=>{const d=new Date(ts||Date.now()),p=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${p(d.getHours())}:${p(d.getMinutes())}`};
 
+function chip(g,label,on,cls){
+  return `<button type="button" class="chip ${cls||''} ${on?'on':''}" data-g="${esc(g)}">${esc(label)}</button>`;
+}
+
+function renderGroups(){
+  const el=$('#groups');
+  const hasUngrouped=items.some(i=>!(i.group||''));
+  let h=`<button type="button" class="chip ${activeFilter==='*'?'on':''}" data-all="1">全部</button>`;
+  groups.forEach(g=>{h+=chip(g,g,activeFilter===g,'')});
+  if(hasUngrouped)h+=`<button type="button" class="chip ${activeFilter===''?'on':''}" data-g="">未分类</button>`;
+  h+=`<button type="button" class="chip add" data-add="1">＋</button>`;
+  el.innerHTML=h;
+
+  el.querySelectorAll('.chip').forEach(b=>{
+    b.onclick=()=>{
+      if(b._lp){b._lp=false;return}
+      if(b.dataset.add){addGroup();return}
+      activeFilter=b.dataset.all?'*':b.dataset.g;
+      render();
+    };
+    const name=b.dataset.g;
+    if(name){
+      let t=null;
+      const start=()=>{t=setTimeout(()=>{b._lp=true;manageGroup(name)},600)};
+      const stop=()=>clearTimeout(t);
+      b.addEventListener('pointerdown',start);
+      b.addEventListener('pointerup',stop);
+      b.addEventListener('pointercancel',stop);
+      b.addEventListener('pointerleave',stop);
+    }
+  });
+}
+
+function addGroup(){
+  const n=prompt('新分区叫什么？（比如 冰柜、篮球筐）');
+  if(n===null)return;
+  const t=n.trim();
+  if(!t)return;
+  if(!groups.includes(t)){groups.push(t);saveGroups()}
+  activeFilter=t;render();
+}
+
+async function manageGroup(name){
+  const act=prompt(`「${name}」\n改个名字，或者清空直接删除`,name);
+  if(act===null)return;
+  const nn=act.trim();
+  if(!nn){
+    if(!confirm(`删掉分区「${name}」？里面的东西会回到未分类`))return;
+    groups=groups.filter(g=>g!==name);saveGroups();
+    const touched=items.filter(it=>(it.group||'')===name);
+    for(const it of touched){it.group='';await put(it)}
+    if(activeFilter===name)activeFilter='*';
+  }else if(nn!==name){
+    if(groups.includes(nn)){alert('已经有这个分区了');return}
+    groups=groups.map(g=>g===name?nn:g);saveGroups();
+    const touched=items.filter(it=>(it.group||'')===name);
+    for(const it of touched){it.group=nn;await put(it)}
+    if(activeFilter===name)activeFilter=nn;
+  }else return;
+  render();
+}
+
+function renderGroupPick(){
+  const el=$('#groupPick');
+  let h=chip('','未分类',formGroup==='','small');
+  groups.forEach(g=>{h+=chip(g,g,formGroup===g,'small')});
+  h+=`<button type="button" class="chip small add" data-add="1">＋</button>`;
+  el.innerHTML=h;
+  el.querySelectorAll('.chip').forEach(b=>{
+    b.onclick=()=>{
+      if(b.dataset.add){
+        const n=prompt('新分区叫什么？');
+        if(n===null)return;
+        const t=n.trim();
+        if(!t)return;
+        if(!groups.includes(t)){groups.push(t);saveGroups()}
+        formGroup=t;renderGroupPick();return;
+      }
+      formGroup=b.dataset.g||'';
+      renderGroupPick();
+    };
+  });
+}
+
 function render(){
+  renderGroups();
   const kw=$('#q').value.trim().toLowerCase();
-  const list=kw?items.filter(i=>(i.name+' '+i.note).toLowerCase().includes(kw)):items;
+  let list=items;
+  if(activeFilter!=='*')list=list.filter(i=>(i.group||'')===activeFilter);
+  if(kw)list=list.filter(i=>((i.name||'')+' '+(i.note||'')).toLowerCase().includes(kw));
   $('#count').textContent=items.length?`${items.length} 样`:'';
   if(!list.length){
-    $('#grid').innerHTML=`<div class="empty">${items.length?'没找到这一样':'还空着呢～<br>点右下角的 ＋，拍第一样'}</div>`;
+    const msg=!items.length
+      ? '还空着呢～<br>点右下角的 ＋，拍第一样'
+      : (activeFilter==='*'?'没找到这一样':'这个分区还空着');
+    $('#grid').innerHTML=`<div class="empty">${msg}</div>`;
     return;
   }
   $('#grid').innerHTML=list.map(i=>`
@@ -298,6 +411,8 @@ function openSheet(item,img){
   $('#f-name').value=item?item.name:'';
   $('#f-price').value=item?item.price:'';
   $('#f-note').value=item?item.note:'';
+  formGroup=item?(item.group||''):(activeFilter!=='*'?activeFilter:'');
+  renderGroupPick();
   const s=$('#sheet');
   s.hidden=false;
   requestAnimationFrame(()=>s.classList.add('open'));
@@ -321,8 +436,8 @@ $('#save').onclick=async()=>{
   const name=$('#f-name').value.trim(),price=$('#f-price').value.trim(),note=$('#f-note').value.trim();
   if(!name){alert('先给它起个名字吧');return}
   const rec=editing
-    ?{...editing,name,price,note,img:pendingImg||editing.img}
-    :{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:Date.now(),name,price,note,img:pendingImg};
+    ?{...editing,name,price,note,group:formGroup,img:pendingImg||editing.img}
+    :{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:Date.now(),name,price,note,group:formGroup,img:pendingImg};
   await put(rec);
   items=await all();
   $('#sheet').classList.remove('open');
@@ -339,7 +454,7 @@ $('#grid').addEventListener('click',e=>{
   $('#d-price').innerHTML=hasPrice?`<i>¥</i>${esc(it.price)}`:'没记价格';
   $('#d-price').classList.toggle('noprice',!hasPrice);
   $('#d-name').textContent=it.name||'';
-  $('#d-meta').textContent='记于 '+fmt(it.t);
+  $('#d-meta').textContent='记于 '+fmt(it.t)+(it.group?' · '+it.group:'');
   const hasNote=!!(it.note&&it.note.trim());
   $('#d-note-wrap').hidden=!hasNote;
   $('#d-note').textContent=it.note||'';
@@ -371,7 +486,7 @@ $('#export').onclick=async()=>{
   if(!items.length){alert('还没有东西可导出');return}
   const d=new Date(),p=n=>String(n).padStart(2,'0');
   const name=`喵喵速记备份-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.json`;
-  const blob=new Blob([JSON.stringify({v:1,at:Date.now(),items})],{type:'application/json'});
+  const blob=new Blob([JSON.stringify({v:2,at:Date.now(),groups,items})],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download=name;a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
@@ -386,6 +501,10 @@ $('#importer').onchange=async e=>{
     const data=JSON.parse(await f.text());
     const list=Array.isArray(data)?data:data.items;
     if(!Array.isArray(list))throw 0;
+    if(Array.isArray(data.groups)){
+      groups=[...new Set([...groups,...data.groups.filter(g=>typeof g==='string'&&g.trim())])];
+      saveGroups();
+    }
     let n=0;
     for(const it of list){
       if(!it||!it.img||!it.id)continue;
@@ -397,6 +516,7 @@ $('#importer').onchange=async e=>{
 };
 
 (async()=>{
+  groups=loadGroups();
   items=await all(); render();
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
   if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
