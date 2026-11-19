@@ -136,19 +136,36 @@
   .row button:active{transform:scale(.985)}
 
   .detail{background:var(--night);flex-direction:column;align-items:stretch;overflow:auto}
-  .detail img{width:100%;max-height:54vh;object-fit:contain;background:#07060d}
+  .hero{position:relative;background:#07060d}
+  .hero img{width:100%;max-height:58vh;object-fit:contain;display:block}
+  .hero::after{
+    content:"";position:absolute;left:0;right:0;bottom:-1px;height:160px;
+    background:linear-gradient(180deg,rgba(18,16,31,0),rgba(18,16,31,.88) 72%,var(--night));
+  }
   #back{
-    position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:14px;
+    position:fixed;top:calc(env(safe-area-inset-top) + 12px);left:14px;
     width:40px;height:40px;border-radius:50%;border:1px solid rgba(227,184,120,.22);
     background:rgba(18,16,31,.72);backdrop-filter:blur(8px);
-    display:flex;align-items:center;justify-content:center;padding:0;z-index:2;
+    display:flex;align-items:center;justify-content:center;padding:0;z-index:3;
   }
   #back svg{stroke:var(--cream);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
-  .d-body{padding:20px 18px calc(26px + env(safe-area-inset-bottom))}
-  #d-price{font-size:42px;font-weight:800;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums}
-  #d-price i{font-size:22px;font-style:normal;font-weight:700;color:var(--gold);margin-right:2px}
-  #d-name{font-size:19px;margin-top:8px;color:var(--cream)}
-  #d-note{font-size:15.5px;color:var(--cream-dim);margin-top:10px;white-space:pre-wrap;line-height:1.6}
+  .d-body{
+    position:relative;margin-top:-46px;
+    padding:24px 20px calc(28px + env(safe-area-inset-bottom));
+    border-radius:24px 24px 0 0;background:var(--night);
+    box-shadow:0 -24px 44px rgba(0,0,0,.55);
+  }
+  .d-label{font-size:11.5px;letter-spacing:.14em;color:rgba(227,184,120,.72);margin-bottom:5px}
+  #d-price{font-size:46px;font-weight:800;letter-spacing:-.02em;line-height:1.08;font-variant-numeric:tabular-nums}
+  #d-price i{font-size:23px;font-style:normal;font-weight:700;color:var(--gold);margin-right:2px}
+  #d-price.noprice{font-size:24px;font-weight:600;color:rgba(246,234,214,.38);letter-spacing:.02em}
+  #d-name{font-size:21px;font-weight:600;margin-top:16px;color:var(--cream)}
+  .d-meta{font-size:12.5px;color:rgba(246,234,214,.45);margin-top:9px}
+  .d-note-wrap{
+    margin-top:22px;padding:14px 16px;border-radius:15px;
+    background:rgba(255,255,255,.045);border:1px solid rgba(227,184,120,.10);
+  }
+  #d-note{font-size:15.5px;color:rgba(246,234,214,.84);white-space:pre-wrap;line-height:1.65}
   .d-body .row{margin-top:26px}
 
   .menu-item{
@@ -180,7 +197,7 @@
   <div class="sheet-body">
     <img id="preview" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
     <input class="f" id="f-name" placeholder="今天想记住什么～喵">
-    <input class="f" id="f-price" placeholder="哦～原来是这样" inputmode="decimal">
+    <input class="f" id="f-price" placeholder="哦～原来是这样（可不填）" inputmode="decimal">
     <textarea class="f" id="f-note" placeholder="多想想容易漏掉的细节！"></textarea>
     <div class="row">
       <button id="cancel">取消</button>
@@ -190,14 +207,21 @@
 </div>
 
 <div class="detail" id="detail" hidden>
+  <div class="hero">
+    <img id="d-img" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+  </div>
   <button id="back" aria-label="返回">
     <svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
   </button>
-  <img id="d-img" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
   <div class="d-body">
+    <div class="d-label">价格</div>
     <div id="d-price"></div>
     <div id="d-name"></div>
-    <div id="d-note"></div>
+    <div class="d-meta" id="d-meta"></div>
+    <div class="d-note-wrap" id="d-note-wrap">
+      <div class="d-label">备注</div>
+      <div id="d-note"></div>
+    </div>
     <div class="row">
       <button id="d-edit">改一下</button>
       <button id="d-del">删掉</button>
@@ -247,6 +271,8 @@ function shrink(file,max=1000,q=.78){
 
 const $=s=>document.querySelector(s);
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=ts=>{const d=new Date(ts||Date.now()),p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${p(d.getHours())}:${p(d.getMinutes())}`};
 
 function render(){
   const kw=$('#q').value.trim().toLowerCase();
@@ -293,7 +319,7 @@ $('#picker').onchange=async e=>{
 $('#cancel').onclick=closeSheet;
 $('#save').onclick=async()=>{
   const name=$('#f-name').value.trim(),price=$('#f-price').value.trim(),note=$('#f-note').value.trim();
-  if(!name&&!price){alert('至少写个名字或价格');return}
+  if(!name){alert('先给它起个名字吧');return}
   const rec=editing
     ?{...editing,name,price,note,img:pendingImg||editing.img}
     :{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:Date.now(),name,price,note,img:pendingImg};
@@ -309,10 +335,16 @@ $('#grid').addEventListener('click',e=>{
   const it=items.find(x=>x.id===c.dataset.id); if(!it)return;
   current=it;
   $('#d-img').src=it.img;
-  $('#d-price').innerHTML=it.price?`<i>¥</i>${esc(it.price)}`:'';
+  const hasPrice=!!(it.price&&String(it.price).trim());
+  $('#d-price').innerHTML=hasPrice?`<i>¥</i>${esc(it.price)}`:'没记价格';
+  $('#d-price').classList.toggle('noprice',!hasPrice);
   $('#d-name').textContent=it.name||'';
+  $('#d-meta').textContent='记于 '+fmt(it.t);
+  const hasNote=!!(it.note&&it.note.trim());
+  $('#d-note-wrap').hidden=!hasNote;
   $('#d-note').textContent=it.note||'';
   $('#detail').hidden=false;
+  $('#detail').scrollTop=0;
 });
 $('#back').onclick=()=>{$('#detail').hidden=true;current=null};
 $('#d-edit').onclick=()=>{$('#detail').hidden=true;if(current)openSheet(current,current.img)};
