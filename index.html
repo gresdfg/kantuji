@@ -3,110 +3,178 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a84ff">
+<meta name="theme-color" content="#12101f">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="看图记">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="喵喵速记">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-<title>看图记</title>
+<link rel="preload" as="image" href="./bg.webp">
+<title>喵喵图片速记便签</title>
 <style>
+  :root{
+    --cream:#f6ead6;
+    --cream-dim:rgba(246,234,214,.60);
+    --gold:#e3b878;
+    --gold-deep:#c99a55;
+    --night:#12101f;
+    --glass:rgba(26,21,40,.62);
+    --line:rgba(227,184,120,.15);
+  }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
   body{
-    font:16px/1.4 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
-    background:#f2f2f7;color:#1c1c1e;
+    font:16px/1.45 -apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+    background:var(--night);color:var(--cream);
     padding-bottom:env(safe-area-inset-bottom);
     overscroll-behavior-y:contain;
+    -webkit-font-smoothing:antialiased;
   }
+  .bg{position:fixed;inset:0;z-index:-2;background:#12101f url(./bg.webp) center/cover no-repeat}
+  .bg::after{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(130% 70% at 50% 0%,rgba(18,16,31,0) 30%,rgba(18,16,31,.50) 100%),
+      linear-gradient(180deg,rgba(18,16,31,.34) 0%,rgba(18,16,31,.18) 42%,rgba(18,16,31,.42) 74%,rgba(18,16,31,.72) 100%);
+  }
+  ::selection{background:rgba(227,184,120,.35);color:#fff7e8}
+  ::-webkit-scrollbar{width:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(227,184,120,.22);border-radius:3px}
+
   header{
     position:sticky;top:0;z-index:10;
-    background:rgba(242,242,247,.92);backdrop-filter:blur(12px);
-    padding:calc(env(safe-area-inset-top) + 12px) 14px 10px;
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 20px;
+    background:linear-gradient(180deg,rgba(18,16,31,.96) 0%,rgba(18,16,31,.84) 58%,rgba(18,16,31,0) 100%);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   }
-  .hrow{display:flex;align-items:baseline;margin-bottom:10px}
-  h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.02em;flex:1}
-  h1 span{font-size:13px;font-weight:400;color:#8e8e93;margin-left:6px}
-  #menu{border:0;background:none;color:#0a84ff;font-size:15px;font-family:inherit;padding:0 2px}
+  .hrow{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+  h1{
+    font-size:19px;margin:0;font-weight:600;letter-spacing:.02em;flex:1;
+    color:var(--cream);text-shadow:0 1px 12px rgba(0,0,0,.55);
+  }
+  h1 span{font-size:12px;font-weight:400;color:rgba(227,184,120,.85);margin-left:7px;letter-spacing:0}
+  #menu{
+    border:0;background:none;color:var(--gold);font-size:14px;font-family:inherit;
+    padding:4px 2px;letter-spacing:.03em;
+  }
   #q{
-    width:100%;height:40px;border:0;border-radius:11px;background:#e3e3e9;
-    padding:0 12px;font-size:16px;outline:none;
+    width:100%;height:42px;border-radius:13px;font-size:16px;outline:none;
+    background:rgba(30,24,46,.62);border:1px solid var(--line);
+    color:var(--cream);padding:0 14px;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   }
+  #q::placeholder{color:rgba(246,234,214,.52)}
+  #q:focus-visible,#menu:focus-visible{outline:2px solid rgba(227,184,120,.55);outline-offset:2px}
+
   main{
-    display:grid;grid-template-columns:1fr 1fr;gap:10px;
-    padding:4px 14px 110px;
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;
+    padding:6px 16px 120px;
   }
   .card{
-    background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.07);
+    min-width:0;
+    background:var(--glass);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    box-shadow:0 12px 26px -10px rgba(0,0,0,.65);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     display:flex;flex-direction:column;
+    transition:transform .18s cubic-bezier(.22,1,.36,1);
   }
-  .card img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:#e3e3e9}
-  .card .txt{padding:8px 10px 10px}
-  .card .price{font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
-  .card .price i{font-size:14px;font-weight:600;font-style:normal;margin-right:1px}
-  .card .name{font-size:13px;color:#6c6c70;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .empty{grid-column:1/-1;text-align:center;color:#a1a1a6;padding:60px 24px;font-size:15px;line-height:1.7}
+  .card:active{transform:scale(.975)}
+  .card img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:rgba(255,255,255,.04)}
+  .card .txt{padding:9px 11px 11px}
+  .card .price{
+    font-size:23px;font-weight:700;letter-spacing:-.01em;line-height:1.15;
+    color:var(--cream);font-variant-numeric:tabular-nums;
+  }
+  .card .price i{font-size:13px;font-weight:600;font-style:normal;margin-right:1px;color:var(--gold)}
+  .card .name{
+    font-size:12.5px;color:var(--cream-dim);margin-top:3px;line-height:1.35;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .empty{
+    grid-column:1/-1;text-align:center;color:rgba(248,238,222,.85);
+    padding:64px 28px;font-size:15px;line-height:1.9;
+    text-shadow:0 2px 16px rgba(0,0,0,.85),0 0 30px rgba(0,0,0,.6);
+  }
   #add{
-    position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom) + 22px);
-    width:60px;height:60px;border-radius:30px;border:0;background:#0a84ff;color:#fff;
-    font-size:32px;font-weight:300;line-height:60px;padding:0;
-    box-shadow:0 4px 14px rgba(0,0,0,.2);z-index:20;
+    position:fixed;right:20px;bottom:calc(env(safe-area-inset-bottom) + 24px);
+    width:60px;height:60px;border-radius:50%;border:0;padding:0;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(165deg,#efcb92,#c49450);
+    box-shadow:0 12px 24px -8px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.35);
+    z-index:20;
   }
-  .sheet,.detail{
-    position:fixed;inset:0;z-index:30;background:#00000073;
-    display:flex;align-items:flex-end;
-  }
+  #add:active{transform:scale(.95)}
+  #add svg{stroke:#231a2e;stroke-width:2.2;fill:none;stroke-linecap:round}
+
+  .sheet,.detail{position:fixed;inset:0;z-index:30;background:rgba(8,6,14,.62);display:flex;align-items:flex-end}
   .sheet[hidden],.detail[hidden]{display:none}
+  .sheet{opacity:0;transition:opacity .22s ease}
+  .sheet.open{opacity:1}
   .sheet-body{
-    width:100%;background:#fff;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+    width:100%;border-radius:22px 22px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom));
     max-height:92vh;overflow:auto;
+    background:rgba(22,18,34,.97);border-top:1px solid rgba(227,184,120,.22);
+    box-shadow:0 -18px 40px rgba(0,0,0,.5);
+    transform:translateY(16px);transition:transform .28s cubic-bezier(.22,1,.36,1);
   }
-  .sheet-body img{width:100%;max-height:38vh;object-fit:contain;border-radius:12px;background:#f2f2f7;display:block;margin-bottom:14px}
+  .sheet.open .sheet-body{transform:translateY(0)}
+  .sheet-body img{width:100%;max-height:38vh;object-fit:contain;border-radius:14px;background:rgba(255,255,255,.05);display:block;margin-bottom:14px}
   input.f,textarea.f{
-    width:100%;border:0;border-radius:11px;background:#f2f2f7;padding:13px 14px;
-    font-size:17px;outline:none;margin-bottom:10px;font-family:inherit;
+    width:100%;border-radius:13px;padding:13px 14px;font-size:17px;outline:none;
+    margin-bottom:10px;font-family:inherit;
+    background:rgba(255,255,255,.055);border:1px solid rgba(227,184,120,.16);color:var(--cream);
   }
-  textarea.f{resize:none;height:76px}
+  input.f::placeholder,textarea.f::placeholder{color:rgba(246,234,214,.45)}
+  input.f:focus,textarea.f:focus{border-color:rgba(227,184,120,.5);background:rgba(255,255,255,.08)}
+  textarea.f{resize:none;height:78px}
   .row{display:flex;gap:10px;margin-top:6px}
   .row button{
-    flex:1;height:50px;border-radius:12px;border:0;font-size:17px;font-weight:600;
-    background:#e3e3e9;color:#1c1c1e;font-family:inherit;
+    flex:1;height:50px;border-radius:14px;border:0;font-size:17px;font-weight:600;
+    font-family:inherit;background:rgba(255,255,255,.08);color:var(--cream);
   }
-  .row button.primary{background:#0a84ff;color:#fff}
-  .detail{background:#fff;flex-direction:column;align-items:stretch;overflow:auto}
-  .detail img{width:100%;max-height:56vh;object-fit:contain;background:#000}
+  .row button.primary{background:linear-gradient(165deg,#efcb92,#c49450);color:#231a2e}
+  .row button:active{transform:scale(.985)}
+
+  .detail{background:var(--night);flex-direction:column;align-items:stretch;overflow:auto}
+  .detail img{width:100%;max-height:54vh;object-fit:contain;background:#07060d}
   #back{
-    position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:12px;
-    width:40px;height:40px;border-radius:20px;border:0;background:#ffffffd9;
-    font-size:24px;line-height:36px;padding:0;color:#1c1c1e;z-index:2;
+    position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:14px;
+    width:40px;height:40px;border-radius:50%;border:1px solid rgba(227,184,120,.22);
+    background:rgba(18,16,31,.72);backdrop-filter:blur(8px);
+    display:flex;align-items:center;justify-content:center;padding:0;z-index:2;
   }
-  .d-body{padding:18px 18px calc(24px + env(safe-area-inset-bottom))}
-  #d-price{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
-  #d-price i{font-size:24px;font-style:normal;font-weight:700}
-  #d-name{font-size:19px;margin-top:6px}
-  #d-note{font-size:16px;color:#6c6c70;margin-top:10px;white-space:pre-wrap}
-  .d-body .row{margin-top:24px}
+  #back svg{stroke:var(--cream);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .d-body{padding:20px 18px calc(26px + env(safe-area-inset-bottom))}
+  #d-price{font-size:42px;font-weight:800;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums}
+  #d-price i{font-size:22px;font-style:normal;font-weight:700;color:var(--gold);margin-right:2px}
+  #d-name{font-size:19px;margin-top:8px;color:var(--cream)}
+  #d-note{font-size:15.5px;color:var(--cream-dim);margin-top:10px;white-space:pre-wrap;line-height:1.6}
+  .d-body .row{margin-top:26px}
+
   .menu-item{
-    display:block;width:100%;height:52px;border:0;border-radius:12px;
-    background:#f2f2f7;color:#0a84ff;font-size:17px;font-weight:600;
-    font-family:inherit;margin-bottom:10px;
+    display:block;width:100%;height:52px;border-radius:14px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(227,184,120,.16);
+    color:var(--gold);font-size:16.5px;font-weight:600;font-family:inherit;margin-bottom:10px;
   }
-  .menu-item.gray{color:#1c1c1e;}
-  .hint{font-size:13px;color:#8e8e93;line-height:1.6;margin:4px 2px 14px}
+  .menu-item.gray{color:var(--cream)}
+  .hint{font-size:13px;color:rgba(246,234,214,.5);line-height:1.65;margin:4px 2px 14px}
 </style>
 </head>
 <body>
+<div class="bg"></div>
 
 <header>
   <div class="hrow">
-    <h1>看图记 <span id="count"></span></h1>
+    <h1>喵喵图片速记便签 <span id="count"></span></h1>
     <button id="menu">备份</button>
   </div>
   <input id="q" placeholder="搜名字 / 备注" autocomplete="off">
 </header>
 
 <main id="grid"></main>
-<button id="add" aria-label="拍照增加">＋</button>
+<button id="add" aria-label="拍照增加">
+  <svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+</button>
 
 <div class="sheet" id="sheet" hidden>
   <div class="sheet-body">
@@ -122,7 +190,9 @@
 </div>
 
 <div class="detail" id="detail" hidden>
-  <button id="back">‹</button>
+  <button id="back" aria-label="返回">
+    <svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
   <img id="d-img" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
   <div class="d-body">
     <div id="d-price"></div>
@@ -202,8 +272,16 @@ function openSheet(item,img){
   $('#f-name').value=item?item.name:'';
   $('#f-price').value=item?item.price:'';
   $('#f-note').value=item?item.note:'';
-  $('#sheet').hidden=false;
-  if(!item)setTimeout(()=>$('#f-name').focus(),250);
+  const s=$('#sheet');
+  s.hidden=false;
+  requestAnimationFrame(()=>s.classList.add('open'));
+  if(!item)setTimeout(()=>$('#f-name').focus(),280);
+}
+function closeSheet(){
+  const s=$('#sheet');
+  s.classList.remove('open');
+  setTimeout(()=>{s.hidden=true;$('#preview').src=''},220);
+  pendingImg=null;editing=null;
 }
 
 $('#add').onclick=()=>$('#picker').click();
@@ -212,7 +290,7 @@ $('#picker').onchange=async e=>{
   if(!f)return;
   try{openSheet(null,await shrink(f))}catch(_){alert('这张图读不出来，换一张试试')}
 };
-$('#cancel').onclick=()=>{$('#sheet').hidden=true;$('#preview').src='';pendingImg=null;editing=null};
+$('#cancel').onclick=closeSheet;
 $('#save').onclick=async()=>{
   const name=$('#f-name').value.trim(),price=$('#f-price').value.trim(),note=$('#f-note').value.trim();
   if(!name&&!price){alert('至少写个名字或价格');return}
@@ -221,6 +299,7 @@ $('#save').onclick=async()=>{
     :{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:Date.now(),name,price,note,img:pendingImg};
   await put(rec);
   items=await all();
+  $('#sheet').classList.remove('open');
   $('#sheet').hidden=true;$('#detail').hidden=true;pendingImg=null;editing=null;
   render();
 };
@@ -244,19 +323,27 @@ $('#d-del').onclick=async()=>{
 };
 $('#q').oninput=render;
 
-$('#menu').onclick=()=>{$('#menuSheet').hidden=false};
-$('#menuClose').onclick=()=>{$('#menuSheet').hidden=true};
-$('#menuSheet').addEventListener('click',e=>{if(e.target.id==='menuSheet')$('#menuSheet').hidden=true});
+function openMenu(){
+  const s=$('#menuSheet');s.hidden=false;
+  requestAnimationFrame(()=>s.classList.add('open'));
+}
+function closeMenu(){
+  const s=$('#menuSheet');s.classList.remove('open');
+  setTimeout(()=>s.hidden=true,220);
+}
+$('#menu').onclick=openMenu;
+$('#menuClose').onclick=closeMenu;
+$('#menuSheet').addEventListener('click',e=>{if(e.target.id==='menuSheet')closeMenu()});
 
 $('#export').onclick=async()=>{
   if(!items.length){alert('还没有东西可导出');return}
   const d=new Date(),p=n=>String(n).padStart(2,'0');
-  const name=`看图记备份-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.json`;
+  const name=`喵喵速记备份-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.json`;
   const blob=new Blob([JSON.stringify({v:1,at:Date.now(),items})],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download=name;a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-  $('#menuSheet').hidden=true;
+  closeMenu();
 };
 
 $('#import').onclick=()=>$('#importer').click();
@@ -272,10 +359,9 @@ $('#importer').onchange=async e=>{
       if(!it||!it.img||!it.id)continue;
       await put(it); n++;
     }
-    items=await all(); render();
-    $('#menuSheet').hidden=true;
+    items=await all(); render(); closeMenu();
     alert(`恢复了 ${n} 样`);
-  }catch(_){alert('这个文件读不出来，要选「看图记备份-xxxx.json」')}
+  }catch(_){alert('这个文件读不出来，要选「喵喵速记备份-xxxx.json」')}
 };
 
 (async()=>{

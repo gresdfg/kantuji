@@ -1,5 +1,5 @@
-const CACHE = 'kantuji-v2';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CACHE = 'kantuji-v3';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './bg.webp', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
